@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     # Needed to silence warnings (and to be a worthwhile package)
-    name='Parmeterized',
+    name='Parameterized',
     url='https://github.com/DamonGeorge/Parameterized',
     author='Damon George',
     author_email='georgdam@oregonstate.du',
