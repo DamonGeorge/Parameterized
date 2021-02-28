@@ -3,6 +3,8 @@ This file contains the Parameterized and ParameterizedInterface classes
 which are interfaces designed to allow implementing classes to
 save and load their member variables to and from dictionaries.
 """
+from abc import ABC, abstractmethod
+import inspect
 import json
 # supported types for parsing to/from json:
 from enum import Enum
@@ -58,7 +60,7 @@ class Parameterized(object):
         return json.dumps(self.get_params(), indent=2, default=default_json_serializer)
 
 
-class ParameterizedInterface(Parameterized):
+class ParameterizedInterface(Parameterized, ABC):
     """
     This is an extension of the Parameterized class that can be used for interfaces.
 
@@ -77,8 +79,17 @@ class ParameterizedInterface(Parameterized):
     excluded_subclasses = []
     excluded_params = []
 
-    _type = None
-    _type_enum = {}
+    @property
+    @abstractmethod
+    def _type(self):
+        """Should just be overridden  as a class attribute; not as a function"""
+        pass
+
+    @property
+    @abstractmethod
+    def _type_enum(self):
+        """Should just be overridden  as a class attribute; not as a function"""
+        pass
 
     def get_params(self) -> dict:
         """ Adds the type to the params"""
@@ -124,7 +135,8 @@ class ParameterizedInterface(Parameterized):
 
         subs = all_subclasses(cls)
 
-        return {s for s in subs if hasattr(s, "_type") and type(s._type) == cls._type_enum and s.__name__ not in cls.excluded_subclasses}
+        return {s for s in subs if hasattr(s, "_type") and type(s._type) == cls._type_enum
+                and not inspect.isabstract(s) and s.__name__ not in cls.excluded_subclasses}
 
     @classmethod
     def subclass_type_mapping(cls):
