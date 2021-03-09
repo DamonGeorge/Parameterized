@@ -1,1 +1,7 @@
-from .parameterized import Parameterized, ParameterizedInterface, update_attr_from_dict, default_json_serializer, all_subclasses
+from .parameterized import (
+    Parameterized,
+    ParameterizedInterface,
+    all_subclasses,
+    default_json_serializer,
+    update_attr_from_dict,
+)

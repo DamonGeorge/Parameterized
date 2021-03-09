@@ -3,13 +3,13 @@ This file contains the Parameterized and ParameterizedInterface classes
 which are interfaces designed to allow implementing classes to
 save and load their member variables to and from dictionaries.
 """
-from abc import ABC, abstractmethod
 import inspect
 import json
-# supported types for parsing to/from json:
+from abc import ABC, abstractmethod
 from enum import Enum
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 
 
 class Parameterized(object):
@@ -76,6 +76,7 @@ class ParameterizedInterface(Parameterized, ABC):
 
     DO NOT INSTANTIATE
     """
+
     excluded_subclasses = []
     excluded_params = []
 
@@ -94,7 +95,7 @@ class ParameterizedInterface(Parameterized, ABC):
     def get_params(self) -> dict:
         """ Adds the type to the params"""
         params = super().get_params()
-        params.update({'type': self._type})
+        params.update({"type": self._type})
         return params
 
     @classmethod
@@ -103,7 +104,7 @@ class ParameterizedInterface(Parameterized, ABC):
         if not hasattr(cls, "_type_enum"):
             raise Exception("_type_enum attribute does not exist on the given class!")
 
-        t = params['type']  # the enum type
+        t = params["type"]  # the enum type
 
         # in case we only have the name of the enum
         if not isinstance(t, Enum):
@@ -131,12 +132,20 @@ class ParameterizedInterface(Parameterized, ABC):
     def all_parameterized_subclasses(cls):
         """Gets all the valid parameterized subclasses of this parameterized superclass"""
         if not hasattr(cls, "_type_enum"):
-            raise Exception("Attempted to retrieve parameterized subclasses of a non-parameterized superclass!")
+            raise Exception(
+                "Attempted to retrieve parameterized subclasses of a non-parameterized superclass!"
+            )
 
         subs = all_subclasses(cls)
 
-        return {s for s in subs if hasattr(s, "_type") and type(s._type) == cls._type_enum
-                and not inspect.isabstract(s) and s.__name__ not in cls.excluded_subclasses}
+        return {
+            s
+            for s in subs
+            if hasattr(s, "_type")
+            and type(s._type) == cls._type_enum
+            and not inspect.isabstract(s)
+            and s.__name__ not in cls.excluded_subclasses
+        }
 
     @classmethod
     def subclass_type_mapping(cls):
@@ -168,7 +177,9 @@ def update_attr_from_dict(obj, params, excluded_keys=None):
     if excluded_keys is None:
         excluded_keys = []
     for key in obj.__dict__:  # loop object attributes
-        if key in params and key not in excluded_keys:  # update if the key is in the params and is not excluded
+        if (
+            key in params and key not in excluded_keys
+        ):  # update if the key is in the params and is not excluded
             obj.__dict__[key] = params[key]
 
 
@@ -192,5 +203,4 @@ def default_json_serializer(obj):
 def all_subclasses(cls):
     """Returns a set of all the subclasses of the given class"""
     subs = cls.__subclasses__()
-    return set(subs).union(
-        [s for c in subs for s in all_subclasses(c)])
+    return set(subs).union([s for c in subs for s in all_subclasses(c)])
