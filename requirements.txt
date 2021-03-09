@@ -1,4 +1,5 @@
 # development requirements
-numpy
+-e .
 pytest
 pre-commit
+pylint
