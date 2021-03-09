@@ -1,5 +1,5 @@
 # Parameterized
-A simple Python library for creating Parameterized objects that can be saved and loaded to or from dictionaries (and json). 
+A simple Python library for creating Parameterized objects that can be saved and loaded to or from dictionaries (and json).
 
 ## Installation
 ```
@@ -13,7 +13,7 @@ Basic import example: `import parameterized`
 Specified import example: `from parameterized import Parameterized`
 
 ### Parameterized
-Import and extend the `Parameterized` class in order to gain its functionality. 
+Import and extend the `Parameterized` class in order to gain its functionality.
 
 The `Parameterized` class provides functions that allow an object to update its attributes from a dictionary using the `update_params()` method. The `Parameterized` class only works with attributes accessible from `obj.__dict__` (i.e. attributes defined using `self`). `Parameterized` also allows one to retrieve those attributes in dictionary form using `get_params()`. Lastly, this class provides the `from_params()` factory method which creates an object of the given class using a params dictionary. This class allows Parameterized objects to easily be shared across code, saved and loaded to and from json files, and edited by users in json files or in graphical interfaces.
 
@@ -24,9 +24,9 @@ The `ParameterizedInterface` class adds more functionality. This class is intend
 
 The `_type_enum` is an Enum whose attributes define all the sub classes of the abstract interface. Ideally the names of such an Enum should be short and sweet, and the values of the Enum should be readable.
 
-All the child classes that implement the abstract interface must include a `_type` class attribute that is the value of the `_type_enum` corresponding to that child class. 
+All the child classes that implement the abstract interface must include a `_type` class attribute that is the value of the `_type_enum` corresponding to that child class.
 
-These additions result in the `_type` attribute of a class being included in the parameters returned from `get_params()` as the key `"type"`. This then allows the developer to create an instance of the specified class by passing the param dictionary to `ParameterizedInterface.from_params()`. 
+These additions result in the `_type` attribute of a class being included in the parameters returned from `get_params()` as the key `"type"`. This then allows the developer to create an instance of the specified class by passing the param dictionary to `ParameterizedInterface.from_params()`.
 
 The abstract parent class that extends `ParameterizedInterface` can also specify a list of names of child classes to exclude from this heirarchy in the `excluded_subclasses` class attribute.
 

@@ -1,6 +1,8 @@
-import pytest
 import json
 from enum import Enum
+
+import pytest
+
 from parameterized import ParameterizedInterface
 
 
@@ -14,10 +16,8 @@ def example_enum():
     return TestEnum
 
 
-class TestParameterizedInterface():
-
+class TestParameterizedInterface:
     def test_abc(self, example_enum):
-
         class BadParent(ParameterizedInterface):
             def __init__(self):
                 pass
