@@ -1,3 +1,5 @@
+[![Format, Lint, Test](https://github.com/DamonGeorge/Parameterized/actions/workflows/python-main.yml/badge.svg)](https://github.com/DamonGeorge/Parameterized/actions/workflows/python-main.yml)
+
 # Parameterized
 A simple Python library for creating Parameterized objects that can be saved and loaded to or from dictionaries (and json).
 
