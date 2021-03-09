@@ -1,5 +1,4 @@
 import pytest
-import json
 
 from parameterized import Parameterized
 
@@ -58,3 +57,16 @@ class TestParameterized():
         obj = example_class()
 
         assert str(obj) == '{\n  "i": 5,\n  "b": false,\n  "s": "Hello"\n}'
+
+    def test_excluded_params(self, example_class, example_params):
+        example_class.excluded_params = ['i']
+        example_params.pop('i')
+
+        # test get
+        obj = example_class()
+        assert obj.get_params() == example_params
+
+        # test update
+        obj.update_from_params({'i': 100, 'no': False})
+        assert obj.i == 5
+        assert not hasattr(obj, 'no')
