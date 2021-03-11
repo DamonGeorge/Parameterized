@@ -49,5 +49,5 @@ jobs:
         gistID: ade14e046841f505d11984a8e75385b0
         filename: Parameterized__coverage__main.json
         label: Test Coverage
-        message: env.COVERAGE
+        message: ${{ env.COVERAGE }}
         color: green
