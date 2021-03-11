@@ -41,7 +41,7 @@ jobs:
           cov.load()
           with open(os.devnull, "w") as f:
               total = cov.report(file=f)
-          print(f"{int(total)}%", end='')
+          set_env("COVERAGE", f"{int(total)}%")
     - name: Create coverage badge
       uses: schneegans/dynamic-badges-action@v1.0.0
       with:
@@ -49,5 +49,5 @@ jobs:
         gistID: ade14e046841f505d11984a8e75385b0
         filename: Parameterized__coverage__main.json
         label: Test Coverage
-        message: ${{ steps.script.outputs.stdout }}
+        message: env.COVERAGE
         color: green
