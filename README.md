@@ -1,4 +1,5 @@
 [![Format, Lint, Test](https://github.com/DamonGeorge/Parameterized/actions/workflows/python-main.yml/badge.svg)](https://github.com/DamonGeorge/Parameterized/actions/workflows/python-main.yml)
+![Coverage Badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/DamonGeorge/ade14e046841f505d11984a8e75385b0/raw/Parameterized__coverage__main.json)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/DamonGeorge/Parameterized)
 
 # Parameterized
