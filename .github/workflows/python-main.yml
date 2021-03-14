@@ -6,6 +6,8 @@ name: Format, Lint, Test
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 
 jobs:
@@ -22,7 +24,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
         pip install coverage pytest-cov
     - name: Run pre-commit hooks
       run: |
@@ -32,6 +34,7 @@ jobs:
       run: |
         pytest --cov=parameterized
     - name: Get pytest coverage
+      if: github.event_name == 'push'
       uses: jannekem/run-python-script-action@v1
       with:
         script: |
@@ -43,6 +46,7 @@ jobs:
               total = cov.report(file=f)
           set_env("COVERAGE", str(int(total)))
     - name: Create coverage badge
+      if: github.event_name == 'push'
       uses: schneegans/dynamic-badges-action@v1.0.0
       with:
         auth: ${{ secrets.GIST_SECRET }}
