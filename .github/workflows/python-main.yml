@@ -69,7 +69,7 @@ jobs:
       if: github.event_name == 'push'
       uses: "WyriHaximus/github-action-get-previous-tag@v1"
     - name: Create new version tag
-      if: github.event_name == 'push' && steps.previoustag.output.tag != env.NEWEST_VERSION
+      if: github.event_name == 'push' && steps.previoustag.outputs.tag != env.NEWEST_VERSION
       uses: actions/github-script@v3.1.0
       with:
         script: |
