@@ -1,21 +1,17 @@
 from setuptools import setup
 
+# get current version
+exec(open("parameterized/_version.py").read())
+
 setup(
-    # Needed to silence warnings (and to be a worthwhile package)
     name="Parameterized",
     url="https://github.com/DamonGeorge/Parameterized",
     author="Damon George",
-    author_email="georgdam@oregonstate.du",
-    # Needed to actually package something
+    author_email="damon@kindgeorge.com",
     packages=["parameterized"],
-    # Needed for dependencies
     install_requires=["numpy"],
-    dev_requires=["pytest", "pre-commit"],
-    # *strongly* suggested for sharing
-    version="0.1",
-    # The license can be anything you like
+    version=__version__,  # pylint: disable=E0602
     license="MIT",
     description="A simple Python library for creating Parameterized objects that can be saved and loaded to or from dictionaries (and json).",
-    # We will also need a readme eventually (there will be a warning)
     long_description=open("README.md").read(),
 )

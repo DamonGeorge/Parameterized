@@ -16,16 +16,18 @@ repos:
       - id: debug-statements
       - id: check-merge-conflict
 
-  - repo: https://github.com/psf/black
-    rev: 20.8b1
+  - repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: v1.5.5
     hooks:
-      - id: black
+      - id: autopep8
+        args:
+          - --max-line-length=120
+          - --in-place
 
   - repo: https://github.com/timothycrosley/isort
     rev: 5.7.0
     hooks:
       - id: isort
-        args: ["--profile", "black"]
 
   - repo: local
     hooks:
