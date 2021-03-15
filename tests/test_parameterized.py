@@ -1,3 +1,6 @@
+from enum import Enum
+
+import numpy as np
 import pytest
 
 from parameterized import Parameterized
@@ -61,3 +64,63 @@ class TestParameterized:
         obj.update_from_params({"i": 100, "no": False})
         assert obj.i == 5
         assert not hasattr(obj, "no")
+
+    def test_param_types(self):
+        class TempEnum(Enum):
+            ONE = 1
+            TWO = 2
+
+        class TempClass(Parameterized):
+            param_types = {
+                "a": np.ndarray,
+                "b": np.ndarray,
+                "c": TempEnum,
+                "d": TempEnum,
+                "e": (int, str),  # shouldn't convert str
+                "f": (float, str),  # should convert to str
+                "g": (str,),  # should convert to str
+                "h": None,  # should do nothing
+            }
+
+            def __init__(self):
+                self.a = 0
+                self.b = 1
+                self.c = 2
+                self.d = 3
+                self.e = 4
+                self.f = 5
+                self.g = 6
+                self.h = 7
+                self.i = 8
+
+        new_params = {
+            "a": [1, 2, 3, 4, 5],
+            "b": np.array([10, 20, 30, 40, 50]),
+            "c": "ONE",
+            "d": TempEnum.TWO,
+            "e": 10,
+            "f": 100,
+            "g": 1000,
+            "h": 10000
+        }
+
+        t = TempClass()
+        t.update_from_params(new_params)
+
+        assert(isinstance(t.a, np.ndarray))
+        assert(np.array_equal(t.a, new_params["a"]))
+
+        assert(isinstance(t.b, np.ndarray))
+        assert(np.array_equal(t.b, new_params["b"]))
+
+        assert(isinstance(t.c, TempEnum))
+        assert(t.c == TempEnum.ONE)
+
+        assert(isinstance(t.d, TempEnum))
+        assert(t.d == new_params["d"])
+
+        assert(t.e == 10)
+        assert(t.f == "100")
+        assert(t.g == "1000")
+        assert(t.h == 10000)
+        assert(t.i == 8)

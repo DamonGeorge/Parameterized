@@ -23,13 +23,14 @@ class Parameterized(object):
     """
 
     excluded_params = []  # Attribute names that should not be considered params
+    param_types = {}  # types of params
 
     def update_from_params(self, params: dict):
         """
         Update this object's attributes using the params dict.
         Any attributes in the excluded_params list will not be updated
         """
-        update_attr_from_dict(self, params, excluded_keys=self.excluded_params)
+        update_attr_from_dict(self, params, excluded_keys=self.excluded_params, types=self.param_types)
 
     def get_params(self) -> dict:
         """
@@ -163,7 +164,7 @@ class ParameterizedInterface(Parameterized, ABC):
 # =========================================================
 # Helpful Utilities
 # =========================================================
-def update_attr_from_dict(obj, params, excluded_keys=None):
+def update_attr_from_dict(obj, params, excluded_keys=None, types={}):
     """
     Updates class members in obj using the dict params.
 
@@ -176,11 +177,37 @@ def update_attr_from_dict(obj, params, excluded_keys=None):
 
     if excluded_keys is None:
         excluded_keys = []
-    for key in obj.__dict__:  # loop object attributes
-        if (
-            key in params and key not in excluded_keys
-        ):  # update if the key is in the params and is not excluded
-            obj.__dict__[key] = params[key]
+
+    # loop object attributes
+    # and update if the attr is in the params and is not excluded
+    for key in obj.__dict__:
+        if key in params and key not in excluded_keys:
+            # get value and corresponding type
+            value = params[key]
+            type_ = types.get(key, None)
+            constructor_ = type_
+
+            # handle if type_ is tuple of (type, constructor)
+            if isinstance(type_, tuple):
+                if len(type_) >= 2:
+                    constructor_ = type_[1]
+                    type_ = type_[0]
+                else:
+                    constructor_ = type_[0]
+                    type_ = type_[0]
+            # other special types: numpy arrays and enums
+            elif type_ == np.ndarray:
+                constructor_ = np.array
+            elif inspect.isclass(type_) and issubclass(type_, Enum):
+                def construct_enum(x): return type_[x]
+                constructor_ = construct_enum
+
+            # coerce to correct type if possible
+            if type_ is not None and constructor_ is not None and not isinstance(value, type_):
+                value = constructor_(value)
+
+            # update the attribute
+            obj.__dict__[key] = value
 
 
 def default_json_serializer(obj):
