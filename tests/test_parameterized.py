@@ -71,7 +71,7 @@ class TestParameterized:
             TWO = 2
 
         class TempClass(Parameterized):
-            param_types = {
+            param_constructors = {
                 "a": np.ndarray,
                 "b": np.ndarray,
                 "c": TempEnum,
@@ -80,6 +80,7 @@ class TestParameterized:
                 "f": (float, str),  # should convert to str
                 "g": (str,),  # should convert to str
                 "h": None,  # should do nothing
+                "i": (None, lambda x: x+1)  # should always run
             }
 
             def __init__(self):
@@ -92,6 +93,7 @@ class TestParameterized:
                 self.g = 6
                 self.h = 7
                 self.i = 8
+                self.j = 9
 
         new_params = {
             "a": [1, 2, 3, 4, 5],
@@ -101,7 +103,8 @@ class TestParameterized:
             "e": 10,
             "f": 100,
             "g": 1000,
-            "h": 10000
+            "h": 10000,
+            "i": 0
         }
 
         t = TempClass()
@@ -123,4 +126,5 @@ class TestParameterized:
         assert(t.f == "100")
         assert(t.g == "1000")
         assert(t.h == 10000)
-        assert(t.i == 8)
+        assert(t.i == 1)
+        assert(t.j == 9)

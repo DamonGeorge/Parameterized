@@ -23,14 +23,17 @@ class Parameterized(object):
     """
 
     excluded_params = []  # Attribute names that should not be considered params
-    param_types = {}  # types of params
+    param_constructors = {}  # types of params
 
     def update_from_params(self, params: dict):
         """
         Update this object's attributes using the params dict.
-        Any attributes in the excluded_params list will not be updated
+        Any attributes in the excluded_params list will not be updated,
+        and the param_constructors dict will be used to apply any necessary constructors.
         """
-        update_attr_from_dict(self, params, excluded_keys=self.excluded_params, types=self.param_types)
+        update_attr_from_dict(self, params,
+                              excluded_keys=self.excluded_params,
+                              constructors=self.param_constructors)
 
     def get_params(self) -> dict:
         """
@@ -164,19 +167,20 @@ class ParameterizedInterface(Parameterized, ABC):
 # =========================================================
 # Helpful Utilities
 # =========================================================
-def update_attr_from_dict(obj, params, excluded_keys=None, types={}):
+def update_attr_from_dict(obj, params, excluded_keys=[], constructors={}):
     """
-    Updates class members in obj using the dict params.
+    Updates the instance attributes of obj (value in obj.__dict__)
+    using the given params dict.
 
-    This uses __dict__ to update self's attributes,
-    so this will NOT update static class members / constants.
-    It will only work on attributes defined in __init__ using self.<attr_name>
+    Attributes whose names are listed in excluded_keys
+    will be excluded from the update.
 
-    keys in excluded_keys will not be used to update the class members
+    The constructors dict can specify a single type constructor or tuple of (type, constructor)
+    to be used to convert values in the params dict to the correct type during the update.
+    If a tuple of (type, constructor) is provided for a given attribute,
+    the constructor function will only be called if the type is None,
+    or if the new value of the attribute is not of the given type.
     """
-
-    if excluded_keys is None:
-        excluded_keys = []
 
     # loop object attributes
     # and update if the attr is in the params and is not excluded
@@ -184,7 +188,7 @@ def update_attr_from_dict(obj, params, excluded_keys=None, types={}):
         if key in params and key not in excluded_keys:
             # get value and corresponding type
             value = params[key]
-            type_ = types.get(key, None)
+            type_ = constructors.get(key, None)
             constructor_ = type_
 
             # handle if type_ is tuple of (type, constructor)
@@ -203,7 +207,8 @@ def update_attr_from_dict(obj, params, excluded_keys=None, types={}):
                 constructor_ = construct_enum
 
             # coerce to correct type if possible
-            if type_ is not None and constructor_ is not None and not isinstance(value, type_):
+            if constructor_ is not None and callable(constructor_) \
+                    and (type_ is None or not isinstance(value, type_)):
                 value = constructor_(value)
 
             # update the attribute
