@@ -3,6 +3,7 @@ This file contains the Parameterized and ParameterizedInterface classes
 which are interfaces designed to allow implementing classes to
 save and load their member variables to and from dictionaries.
 """
+import array
 import inspect
 import json
 from abc import ABC, abstractmethod
@@ -12,6 +13,68 @@ from pathlib import Path
 import numpy as np
 
 
+# =========================================================
+# Decorators
+# =========================================================
+def register_constructors(enum_params=[], numpy_params=[]):
+    def wrapper(cls):
+        # register callbacks for the enums and np arrays
+        # don't need to do deconstructors cause the types will work automatically
+        for param, enum_cls in enum_params:
+            cls._param_constructors[param] = lambda slf, val: val if isinstance(val, enum_cls) else enum_cls[val]
+        for param in numpy_params:
+            cls._param_constructors[param] = lambda slf, val: np.asarray(val)
+
+        # register callbacks for specific params and types
+        for method in cls.__dict__.values():
+            if hasattr(method, "_param_constructors"):
+                for param in method._param_constructors:
+                    cls._param_constructors[param] = method
+            if hasattr(method, "_param_deconstructors"):
+                for param in method._param_deconstructor:
+                    cls._param_deconstructors[param] = method
+            if hasattr(method, "_type_constructors"):
+                for type_ in method._type_constructors:
+                    cls._type_constructors.append((type_, method))
+            if hasattr(method, "_type_deconstructors"):
+                for type_ in method._type_deconstructors:
+                    cls._type_deconstructors.append((type_, method))
+        return cls
+    return wrapper
+
+
+def param_constructor(*params):
+    def wrapper(func):
+        func._param_constructors = params
+        return func
+    return wrapper
+
+
+def param_deconstructor(*params):
+    def wrapper(func):
+        func._param_deconstructors = params
+        return func
+    return wrapper
+
+
+def type_constructor(*types):
+    def wrapper(func):
+        func._type_constructors = types
+        return func
+    return wrapper
+
+
+def type_deconstructor(*types):
+    def wrapper(func):
+        func._type_deconstructors = types
+        return func
+    return wrapper
+
+
+# =========================================================
+# The two main classes to inherit
+# =========================================================
+@register_constructors()
 class Parameterized(object):
     """
     Interface for objects that allow their attributes (params in this case) to
@@ -23,7 +86,10 @@ class Parameterized(object):
     """
 
     excluded_params = []  # Attribute names that should not be considered params
-    param_constructors = {}  # types of params
+    _param_constructors = {}
+    _param_deconstructors = {}
+    _type_constructors = []
+    _type_deconstructors = []
 
     def update_from_params(self, params: dict):
         """
@@ -33,7 +99,8 @@ class Parameterized(object):
         """
         update_attr_from_dict(self, params,
                               excluded_keys=self.excluded_params,
-                              constructors=self.param_constructors)
+                              type_constructors=self._type_constructors,
+                              param_constructors=self._param_constructors)
 
     def get_params(self) -> dict:
         """
@@ -62,6 +129,15 @@ class Parameterized(object):
         The toString method that prints this object's params using json indented formatting
         """
         return json.dumps(self.get_params(), indent=2, default=default_json_serializer)
+
+    @type_deconstructor(np.ndarray, array.array)
+    def array_deconstructor(self, arr):
+        return arr.tolist()
+
+    @type_deconstructor(Enum)
+    @staticmethod
+    def enum_deconstructor(self, en):
+        return en.name
 
 
 class ParameterizedInterface(Parameterized, ABC):
@@ -167,7 +243,8 @@ class ParameterizedInterface(Parameterized, ABC):
 # =========================================================
 # Helpful Utilities
 # =========================================================
-def update_attr_from_dict(obj, params, excluded_keys=[], constructors={}):
+def update_attr_from_dict(obj, params, excluded_keys=[],
+                          type_constructors={}, param_constructors=[]):
     """
     Updates the instance attributes of obj (value in obj.__dict__)
     using the given params dict.
@@ -186,30 +263,17 @@ def update_attr_from_dict(obj, params, excluded_keys=[], constructors={}):
     # and update if the attr is in the params and is not excluded
     for key in obj.__dict__:
         if key in params and key not in excluded_keys:
-            # get value and corresponding type
+            # get value
             value = params[key]
-            type_ = constructors.get(key, None)
-            constructor_ = type_
 
-            # handle if type_ is tuple of (type, constructor)
-            if isinstance(type_, tuple):
-                if len(type_) >= 2:
-                    constructor_ = type_[1]
-                    type_ = type_[0]
-                else:
-                    constructor_ = type_[0]
-                    type_ = type_[0]
-            # other special types: numpy arrays and enums
-            elif type_ == np.ndarray:
-                constructor_ = np.array
-            elif inspect.isclass(type_) and issubclass(type_, Enum):
-                def construct_enum(x): return type_[x]
-                constructor_ = construct_enum
-
-            # coerce to correct type if possible
-            if constructor_ is not None and callable(constructor_) \
-                    and (type_ is None or not isinstance(value, type_)):
-                value = constructor_(value)
+            # if param has its own constructor, use it
+            if key in param_constructors:
+                value = param_constructors[key](obj, value)
+            else:
+                for type_, constructor in type_constructors:
+                    if isinstance(value, type_):
+                        value = constructor(obj, value)
+                        break
 
             # update the attribute
             obj.__dict__[key] = value
@@ -236,3 +300,13 @@ def all_subclasses(cls):
     """Returns a set of all the subclasses of the given class"""
     subs = cls.__subclasses__()
     return set(subs).union([s for c in subs for s in all_subclasses(c)])
+
+
+def enum_constructor(value: str, enum_cls):
+    """Converts string value to the given enum"""
+    return enum_cls[value]
+
+
+def numpy_constructor(value):
+    """Converts list or number to numpy array"""
+    return np.asarray(value)

@@ -3,7 +3,7 @@ from enum import Enum
 import numpy as np
 import pytest
 
-from parameterized import Parameterized
+from parameterized import *
 
 
 @pytest.fixture
@@ -70,18 +70,18 @@ class TestParameterized:
             ONE = 1
             TWO = 2
 
+        @register_constructors(
+            enum_params=[("c", TempEnum), ("d", TempEnum)],
+            numpy_params=["a", "b"])
         class TempClass(Parameterized):
-            param_constructors = {
-                "a": np.ndarray,
-                "b": np.ndarray,
-                "c": TempEnum,
-                "d": TempEnum,
-                "e": (int, str),  # shouldn't convert str
-                "f": (float, str),  # should convert to str
-                "g": (str,),  # should convert to str
-                "h": None,  # should do nothing
-                "i": (None, lambda x: x+1)  # should always run
-            }
+
+            @param_constructor("f", "g")
+            def fj_constructor(self, val):
+                return str(val)
+
+            @param_constructor("i")
+            def i_constructor(self, val):
+                return val+1
 
             def __init__(self):
                 self.a = 0
@@ -104,7 +104,7 @@ class TestParameterized:
             "f": 100,
             "g": 1000,
             "h": 10000,
-            "i": 0
+            "i": 8
         }
 
         t = TempClass()
@@ -126,5 +126,5 @@ class TestParameterized:
         assert(t.f == "100")
         assert(t.g == "1000")
         assert(t.h == 10000)
-        assert(t.i == 1)
+        assert(t.i == 9)
         assert(t.j == 9)
