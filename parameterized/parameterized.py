@@ -16,57 +16,59 @@ import numpy as np
 # =========================================================
 # Decorators
 # =========================================================
-def register_constructors(enum_params=[], numpy_params=[]):
+def register_serializers(enum_params=[], numpy_params=[], path_params=[]):
     def wrapper(cls):
         # register callbacks for the enums and np arrays
-        # don't need to do deconstructors cause the types will work automatically
+        # don't need to do deserializers cause the types will work automatically
         for param, enum_cls in enum_params:
-            cls._param_constructors[param] = lambda slf, val: val if isinstance(val, enum_cls) else enum_cls[val]
+            cls._param_deserializers[param] = lambda val: val if isinstance(val, enum_cls) else enum_cls[val]
         for param in numpy_params:
-            cls._param_constructors[param] = lambda slf, val: np.asarray(val)
+            cls._param_deserializers[param] = lambda val: np.asarray(val)
+        for param in path_params:
+            cls._param_deserializers[param] = lambda val: Path(val)
 
         # register callbacks for specific params and types
         for method in cls.__dict__.values():
-            if hasattr(method, "_param_constructors"):
-                for param in method._param_constructors:
-                    cls._param_constructors[param] = method
-            if hasattr(method, "_param_deconstructors"):
-                for param in method._param_deconstructor:
-                    cls._param_deconstructors[param] = method
-            if hasattr(method, "_type_constructors"):
-                for type_ in method._type_constructors:
-                    cls._type_constructors.append((type_, method))
-            if hasattr(method, "_type_deconstructors"):
-                for type_ in method._type_deconstructors:
-                    cls._type_deconstructors.append((type_, method))
+            if hasattr(method, "_param_serializers"):
+                for param in method._param_serializers:
+                    cls._param_serializers[param] = method
+            if hasattr(method, "_param_deserializers"):
+                for param in method._param_deserializers:
+                    cls._param_deserializers[param] = method
+            if hasattr(method, "_type_serializers"):
+                for type_ in method._type_serializers:
+                    cls._type_serializers.append((type_, method))
+            if hasattr(method, "_type_deserializers"):
+                for type_ in method._type_deserializers:
+                    cls._type_deserializers.append((type_, method))
         return cls
     return wrapper
 
 
-def param_constructor(*params):
+def param_serializer(*params):
     def wrapper(func):
-        func._param_constructors = params
+        func._param_serializers = params
         return func
     return wrapper
 
 
-def param_deconstructor(*params):
+def param_deserializer(*params):
     def wrapper(func):
-        func._param_deconstructors = params
+        func._param_deserializers = params
         return func
     return wrapper
 
 
-def type_constructor(*types):
+def type_serializer(*types):
     def wrapper(func):
-        func._type_constructors = types
+        func._type_serializers = types
         return func
     return wrapper
 
 
-def type_deconstructor(*types):
+def type_deserializer(*types):
     def wrapper(func):
-        func._type_deconstructors = types
+        func._type_deserializers = types
         return func
     return wrapper
 
@@ -74,7 +76,7 @@ def type_deconstructor(*types):
 # =========================================================
 # The two main classes to inherit
 # =========================================================
-@register_constructors()
+@register_serializers()
 class Parameterized(object):
     """
     Interface for objects that allow their attributes (params in this case) to
@@ -86,21 +88,20 @@ class Parameterized(object):
     """
 
     excluded_params = []  # Attribute names that should not be considered params
-    _param_constructors = {}
-    _param_deconstructors = {}
-    _type_constructors = []
-    _type_deconstructors = []
+    _param_serializers = {}
+    _param_deserializers = {}
+    _type_serializers = []
+    _type_deserializers = []
 
     def update_from_params(self, params: dict):
         """
         Update this object's attributes using the params dict.
         Any attributes in the excluded_params list will not be updated,
-        and the param_constructors dict will be used to apply any necessary constructors.
+        and the param_serializers dict will be used to apply any necessary serializers.
         """
-        update_attr_from_dict(self, params,
-                              excluded_keys=self.excluded_params,
-                              type_constructors=self._type_constructors,
-                              param_constructors=self._param_constructors)
+        # deserialize the params into self
+        deserialize_params(params, self,
+                           self.excluded_params, self._param_deserializers, self._type_deserializers)
 
     def get_params(self) -> dict:
         """
@@ -108,10 +109,14 @@ class Parameterized(object):
         excluding any attributes in the excluded_params list
         """
         params = self.__dict__.copy()
-        [params.pop(key) for key in self.excluded_params if key in params]
+        # remove excluded params
+        for key in self.excluded_params:
+            params.pop(key, None)
+        # return the serialized params
+        serialize_params(params, self._param_serializers, self._type_serializers)
         return params
 
-    @classmethod
+    @ classmethod
     def from_params(cls, params: dict):
         """
         Factory method for creating an object of this class using the params dict
@@ -129,15 +134,6 @@ class Parameterized(object):
         The toString method that prints this object's params using json indented formatting
         """
         return json.dumps(self.get_params(), indent=2, default=default_json_serializer)
-
-    @type_deconstructor(np.ndarray, array.array)
-    def array_deconstructor(self, arr):
-        return arr.tolist()
-
-    @type_deconstructor(Enum)
-    @staticmethod
-    def enum_deconstructor(self, en):
-        return en.name
 
 
 class ParameterizedInterface(Parameterized, ABC):
@@ -160,14 +156,14 @@ class ParameterizedInterface(Parameterized, ABC):
     excluded_subclasses = []
     excluded_params = []
 
-    @property
-    @abstractmethod
+    @ property
+    @ abstractmethod
     def _type(self):
         """Should just be overridden  as a class attribute; not as a function"""
         pass
 
-    @property
-    @abstractmethod
+    @ property
+    @ abstractmethod
     def _type_enum(self):
         """Should just be overridden  as a class attribute; not as a function"""
         pass
@@ -178,7 +174,7 @@ class ParameterizedInterface(Parameterized, ABC):
         params.update({"type": self._type})
         return params
 
-    @classmethod
+    @ classmethod
     def from_params(cls, params: dict):
         """Create the instance given the params, which should contain the instance's "type" """
         if not hasattr(cls, "_type_enum"):
@@ -208,7 +204,7 @@ class ParameterizedInterface(Parameterized, ABC):
         result.update_from_params(params)
         return result
 
-    @classmethod
+    @ classmethod
     def all_parameterized_subclasses(cls):
         """Gets all the valid parameterized subclasses of this parameterized superclass"""
         if not hasattr(cls, "_type_enum"):
@@ -243,40 +239,61 @@ class ParameterizedInterface(Parameterized, ABC):
 # =========================================================
 # Helpful Utilities
 # =========================================================
-def update_attr_from_dict(obj, params, excluded_keys=[],
-                          type_constructors={}, param_constructors=[]):
+def deserialize_params(params, output_obj=None,
+                       excluded_params=[],
+                       param_deserializers={}, type_deserializers=[]):
     """
-    Updates the instance attributes of obj (value in obj.__dict__)
-    using the given params dict.
-
-    Attributes whose names are listed in excluded_keys
+    Attributes whose names are listed in excluded_params
     will be excluded from the update.
-
-    The constructors dict can specify a single type constructor or tuple of (type, constructor)
-    to be used to convert values in the params dict to the correct type during the update.
-    If a tuple of (type, constructor) is provided for a given attribute,
-    the constructor function will only be called if the type is None,
-    or if the new value of the attribute is not of the given type.
     """
+    def serialize(key):
+        value = params[key]  # get the value of the param
 
-    # loop object attributes
-    # and update if the attr is in the params and is not excluded
-    for key in obj.__dict__:
-        if key in params and key not in excluded_keys:
-            # get value
-            value = params[key]
+        # if param has its own serializer, use it
+        if key in param_deserializers:
+            return param_deserializers[key](value)
+        # use the remaining type handlers
+        else:
+            for type_, deserializer in type_deserializers:
+                if isinstance(value, type_):
+                    return deserializer(value)
+        return value
 
-            # if param has its own constructor, use it
-            if key in param_constructors:
-                value = param_constructors[key](obj, value)
-            else:
-                for type_, constructor in type_constructors:
-                    if isinstance(value, type_):
-                        value = constructor(obj, value)
-                        break
+    if output_obj is not None:
+        # if we have an object, only update attributes on the object
+        for attr in output_obj.__dict__:
+            if attr in params and attr not in excluded_params:
+                output_obj.__dict__[attr] = serialize(attr)
 
-            # update the attribute
-            obj.__dict__[key] = value
+    else:
+        # else just update the provided dict
+        for attr in params:
+            if attr not in excluded_params:
+                params[attr] = serialize(attr)
+
+
+def serialize_params(params, param_serializers={}, type_serializers=[]):
+    for key in params:
+        value = params[key]  # get the value of the param
+
+        # if param has its own serializer, use it
+        if key in param_serializers:
+            params[key] = param_serializers[key](value)
+        # built-in serializers for Parameretized objects, numpy arrays, enums and Paths
+        elif isinstance(value, Parameterized):
+            params[key] = value.get_params()
+        elif isinstance(value, np.ndarray):
+            params[key] = value.tolist()
+        elif isinstance(value, Enum):
+            params[key] = value.name
+        elif isinstance(value, Path):
+            params[key] = str(value)
+        # use the remaining type handlers
+        else:
+            for type_, serializer in type_serializers:
+                if isinstance(value, type_):
+                    params[key] = serializer(value)
+                    break
 
 
 def default_json_serializer(obj):
@@ -302,11 +319,11 @@ def all_subclasses(cls):
     return set(subs).union([s for c in subs for s in all_subclasses(c)])
 
 
-def enum_constructor(value: str, enum_cls):
+def enum_serializer(value: str, enum_cls):
     """Converts string value to the given enum"""
     return enum_cls[value]
 
 
-def numpy_constructor(value):
+def numpy_serializer(value):
     """Converts list or number to numpy array"""
     return np.asarray(value)

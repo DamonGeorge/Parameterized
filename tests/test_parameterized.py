@@ -70,17 +70,17 @@ class TestParameterized:
             ONE = 1
             TWO = 2
 
-        @register_constructors(
+        @register_serializers(
             enum_params=[("c", TempEnum), ("d", TempEnum)],
             numpy_params=["a", "b"])
         class TempClass(Parameterized):
 
-            @param_constructor("f", "g")
-            def fj_constructor(self, val):
+            @param_deserializer("f", "g")
+            def fj_deserializer(val):  # pylint: disable=E0213
                 return str(val)
 
-            @param_constructor("i")
-            def i_constructor(self, val):
+            @param_deserializer("i")
+            def i_deserializer(val):  # pylint: disable=E0213
                 return val+1
 
             def __init__(self):
