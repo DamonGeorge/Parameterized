@@ -4,6 +4,8 @@ from typing import List, Tuple
 
 import numpy as np
 
+from parameterized.parameterized import Parameterized
+
 # =========================================================
 # Decorators
 # =========================================================
@@ -11,14 +13,15 @@ import numpy as np
 
 def register_serializers(enum_params: List[Tuple[str, Enum]] = [],
                          numpy_params: List[str] = [],
-                         path_params: List[str] = []):
+                         path_params: List[str] = [],
+                         parameterized_params: List[Tuple[str, Parameterized]] = []):
     """
     This is a class decorator.
 
     Use this on a class that inherits Parameterized or ParameterizedABC to
     (1) register any class methods using the following decorators:
         @param_serializer(), @param_deserializer(), @type_serializer() and @type_deserializer()
-    and (2) specify any class attributes that are Enums, numpy arrays or Paths.
+    and (2) specify any class attributes that are Enums, numpy arrays, Paths or other Parameterized objects.
         Parameterized will handle the serialization and deserialization of those parameters automatically.
 
     :param enum_params: A list of (attribute name, enum class) tuples that specifies
@@ -26,7 +29,10 @@ def register_serializers(enum_params: List[Tuple[str, Enum]] = [],
         These attribute values are serialized into their enum names.
     :param numpy_params A list of attribute names that are numpy arrays. These are serialized into lists.
     :param path_params: A list of attribute names that are Path objects. These are serialized into strings.
-
+    :param parameterized_params: A list of (attribute name, Parameterized class) tuples that specifies
+        attributes on the class that are an object that inherits either Parameterized or ParameterizedABC.
+        Specify the class that actually inherits Parameterized or ParameterizedABC as the second value
+        in each tuple.
     """
     def wrapper(cls):
         # register callbacks for the enums and np arrays
@@ -37,8 +43,10 @@ def register_serializers(enum_params: List[Tuple[str, Enum]] = [],
             cls._param_deserializers[param] = lambda val: np.asarray(val)
         for param in path_params:
             cls._param_deserializers[param] = lambda val: Path(val)
+        for param, parameterized_cls in parameterized_params:
+            cls._param_deserializers[param] = lambda val: parameterized_cls.from_params(val)
 
-        # register callbacks for specific params and types
+            # register callbacks for specific params and types
         for method in cls.__dict__.values():
             if hasattr(method, "_param_serializers"):
                 for param in method._param_serializers:
