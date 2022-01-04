@@ -3,7 +3,7 @@ from enum import Enum
 
 import pytest
 
-from parameterized import ParameterizedInterface
+from parameterized import ParameterizedABC
 
 
 @pytest.fixture
@@ -16,9 +16,9 @@ def example_enum():
     return TestEnum
 
 
-class TestParameterizedInterface:
+class TestParameterizedABC:
     def test_abc(self, example_enum):
-        class BadParent(ParameterizedInterface):
+        class BadParent(ParameterizedABC):
             def __init__(self):
                 pass
 
@@ -26,7 +26,7 @@ class TestParameterizedInterface:
             def __init__(self):
                 super().__init__()
 
-        class GoodParent(ParameterizedInterface):
+        class GoodParent(ParameterizedABC):
             _type_enum = example_enum
 
             def __init__(self):

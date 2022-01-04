@@ -1,9 +1,8 @@
 """
-This file contains the Parameterized and ParameterizedInterface classes
+This file contains the Parameterized and ParameterizedABC classes
 which are interfaces designed to allow implementing classes to
 save and load their member variables to and from dictionaries.
 """
-import array
 import inspect
 import json
 from abc import ABC, abstractmethod
@@ -14,69 +13,8 @@ import numpy as np
 
 
 # =========================================================
-# Decorators
-# =========================================================
-def register_serializers(enum_params=[], numpy_params=[], path_params=[]):
-    def wrapper(cls):
-        # register callbacks for the enums and np arrays
-        # don't need to do deserializers cause the types will work automatically
-        for param, enum_cls in enum_params:
-            cls._param_deserializers[param] = lambda val: val if isinstance(val, enum_cls) else enum_cls[val]
-        for param in numpy_params:
-            cls._param_deserializers[param] = lambda val: np.asarray(val)
-        for param in path_params:
-            cls._param_deserializers[param] = lambda val: Path(val)
-
-        # register callbacks for specific params and types
-        for method in cls.__dict__.values():
-            if hasattr(method, "_param_serializers"):
-                for param in method._param_serializers:
-                    cls._param_serializers[param] = method
-            if hasattr(method, "_param_deserializers"):
-                for param in method._param_deserializers:
-                    cls._param_deserializers[param] = method
-            if hasattr(method, "_type_serializers"):
-                for type_ in method._type_serializers:
-                    cls._type_serializers.append((type_, method))
-            if hasattr(method, "_type_deserializers"):
-                for type_ in method._type_deserializers:
-                    cls._type_deserializers.append((type_, method))
-        return cls
-    return wrapper
-
-
-def param_serializer(*params):
-    def wrapper(func):
-        func._param_serializers = params
-        return func
-    return wrapper
-
-
-def param_deserializer(*params):
-    def wrapper(func):
-        func._param_deserializers = params
-        return func
-    return wrapper
-
-
-def type_serializer(*types):
-    def wrapper(func):
-        func._type_serializers = types
-        return func
-    return wrapper
-
-
-def type_deserializer(*types):
-    def wrapper(func):
-        func._type_deserializers = types
-        return func
-    return wrapper
-
-
-# =========================================================
 # The two main classes to inherit
 # =========================================================
-@register_serializers()
 class Parameterized(object):
     """
     Interface for objects that allow their attributes (params in this case) to
@@ -87,7 +25,7 @@ class Parameterized(object):
     DO NOT INSTANTIATE
     """
 
-    excluded_params = []  # Attribute names that should not be considered params
+    excluded_params = set()  # Attribute names that should not be considered params
     _param_serializers = {}
     _param_deserializers = {}
     _type_serializers = []
@@ -133,10 +71,10 @@ class Parameterized(object):
         """
         The toString method that prints this object's params using json indented formatting
         """
-        return json.dumps(self.get_params(), indent=2, default=default_json_serializer)
+        return json.dumps(self.get_params(), indent=2)
 
 
-class ParameterizedInterface(Parameterized, ABC):
+class ParameterizedABC(Parameterized, ABC):
     """
     This is an extension of the Parameterized class that can be used for interfaces.
 
@@ -156,14 +94,14 @@ class ParameterizedInterface(Parameterized, ABC):
     excluded_subclasses = []
     excluded_params = []
 
-    @ property
-    @ abstractmethod
+    @property
+    @abstractmethod
     def _type(self):
         """Should just be overridden  as a class attribute; not as a function"""
         pass
 
-    @ property
-    @ abstractmethod
+    @property
+    @abstractmethod
     def _type_enum(self):
         """Should just be overridden  as a class attribute; not as a function"""
         pass
@@ -174,7 +112,7 @@ class ParameterizedInterface(Parameterized, ABC):
         params.update({"type": self._type})
         return params
 
-    @ classmethod
+    @classmethod
     def from_params(cls, params: dict):
         """Create the instance given the params, which should contain the instance's "type" """
         if not hasattr(cls, "_type_enum"):
@@ -204,7 +142,7 @@ class ParameterizedInterface(Parameterized, ABC):
         result.update_from_params(params)
         return result
 
-    @ classmethod
+    @classmethod
     def all_parameterized_subclasses(cls):
         """Gets all the valid parameterized subclasses of this parameterized superclass"""
         if not hasattr(cls, "_type_enum"):
@@ -294,23 +232,6 @@ def serialize_params(params, param_serializers={}, type_serializers=[]):
                 if isinstance(value, type_):
                     params[key] = serializer(value)
                     break
-
-
-def default_json_serializer(obj):
-    """
-    This can be used as the 'default' parameter in json.dump
-    to allow the serialization of parameterized or enum objects
-    """
-    if isinstance(obj, Parameterized):
-        return obj.get_params()
-    elif isinstance(obj, Enum):
-        return obj.name
-    elif isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, Path):
-        return str(obj)
-    else:
-        raise TypeError(f"Attempted to parse unrecognized type {type(obj)}")
 
 
 def all_subclasses(cls):

@@ -23,16 +23,16 @@ The `Parameterized` class provides functions that allow an object to update its 
 
 One last important note: The `excluded_params` class attribute allows the developer to specify a list of attribute names that will be excluded from the dictionary parsing. In other words, if an attribute's name is in that list, then `update_params()` can't update that attribute, `get_params()` won't include that attribute in the returned dict, and `from_params()` won't set that attribute when creating a new object.
 
-### ParameterizedInterface
-The `ParameterizedInterface` class adds more functionality. This class is intended to be inherited by class structures that have a single abstract interface. An abstract interface that inherits the ParameterizedInterface, must define a `_type_enum` attribute.
+### ParameterizedABC
+The `ParameterizedABC` class adds more functionality. This class is intended to be inherited by class structures that have a single abstract interface. An abstract interface that inherits the ParameterizedABC, must define a `_type_enum` attribute.
 
 The `_type_enum` is an Enum whose attributes define all the sub classes of the abstract interface. Ideally the names of such an Enum should be short and sweet, and the values of the Enum should be readable.
 
 All the child classes that implement the abstract interface must include a `_type` class attribute that is the value of the `_type_enum` corresponding to that child class.
 
-These additions result in the `_type` attribute of a class being included in the parameters returned from `get_params()` as the key `"type"`. This then allows the developer to create an instance of the specified class by passing the param dictionary to `ParameterizedInterface.from_params()`.
+These additions result in the `_type` attribute of a class being included in the parameters returned from `get_params()` as the key `"type"`. This then allows the developer to create an instance of the specified class by passing the param dictionary to `ParameterizedABC.from_params()`.
 
-The abstract parent class that extends `ParameterizedInterface` can also specify a list of names of child classes to exclude from this heirarchy in the `excluded_subclasses` class attribute.
+The abstract parent class that extends `ParameterizedABC` can also specify a list of names of child classes to exclude from this heirarchy in the `excluded_subclasses` class attribute.
 
 ### Helper Utilities
 #### `update_attr_from_dict(obj, params, excluded_keys=None)`
