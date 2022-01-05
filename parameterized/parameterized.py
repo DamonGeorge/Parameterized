@@ -78,10 +78,10 @@ class ParameterizedABC(Parameterized, ABC):
     """
     This is an extension of the Parameterized class that can be used for interfaces.
 
-    An interface that extends this class should define the _type_enum,
-    and any classes that extend that interface should specify the _type field as a value of the _type_enum.
+    An interface that extends this class should define the type_enum,
+    and any classes that extend that interface should specify the type_ field as a value of the type_enum.
 
-    This Parameterized extension will then save that _type with the class's parameters and
+    This Parameterized extension will then save that type_ with the class's parameters and
     then when using the from_params() factory method, the 'type' param will be used to
     construct an object of the appropriate subclass.
 
@@ -91,38 +91,37 @@ class ParameterizedABC(Parameterized, ABC):
     DO NOT INSTANTIATE
     """
 
-    excluded_subclasses = []
-    excluded_params = []
+    excluded_subclasses = set()
 
     @property
     @abstractmethod
-    def _type(self):
+    def type_(self):
         """Should just be overridden  as a class attribute; not as a function"""
         pass
 
     @property
     @abstractmethod
-    def _type_enum(self):
+    def type_enum(self):
         """Should just be overridden  as a class attribute; not as a function"""
         pass
 
     def get_params(self) -> dict:
         """ Adds the type to the params"""
         params = super().get_params()
-        params.update({"type": self._type})
+        params.update({"type": self.type_})
         return params
 
     @classmethod
     def from_params(cls, params: dict):
         """Create the instance given the params, which should contain the instance's "type" """
-        if not hasattr(cls, "_type_enum"):
-            raise Exception("_type_enum attribute does not exist on the given class!")
+        if not hasattr(cls, "type_enum"):
+            raise Exception("type_enum attribute does not exist on the given class!")
 
         t = params["type"]  # the enum type
 
         # in case we only have the name of the enum
         if not isinstance(t, Enum):
-            t = cls._type_enum[t]
+            t = cls.type_enum[t]
 
         # get sub classes via inspection
         subclasses = cls.all_parameterized_subclasses()
@@ -130,7 +129,7 @@ class ParameterizedABC(Parameterized, ABC):
         # find specific sub class
         found = False
         for c in subclasses:
-            if c._type == t:
+            if c.type_ == t:
                 found = True
                 break
 
@@ -145,7 +144,7 @@ class ParameterizedABC(Parameterized, ABC):
     @classmethod
     def all_parameterized_subclasses(cls):
         """Gets all the valid parameterized subclasses of this parameterized superclass"""
-        if not hasattr(cls, "_type_enum"):
+        if not hasattr(cls, "type_enum"):
             raise Exception(
                 "Attempted to retrieve parameterized subclasses of a non-parameterized superclass!"
             )
@@ -155,8 +154,8 @@ class ParameterizedABC(Parameterized, ABC):
         return {
             s
             for s in subs
-            if hasattr(s, "_type")
-            and type(s._type) == cls._type_enum
+            if hasattr(s, "type_")
+            and type(s.type_) == cls.type_enum
             and not inspect.isabstract(s)
             and s.__name__ not in cls.excluded_subclasses
         }
@@ -171,7 +170,7 @@ class ParameterizedABC(Parameterized, ABC):
         """
         subclasses = cls.all_parameterized_subclasses()
 
-        return {s._type: s for s in subclasses}
+        return {s.type_: s for s in subclasses}
 
 
 # =========================================================

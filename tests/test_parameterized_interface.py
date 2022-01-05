@@ -27,7 +27,7 @@ class TestParameterizedABC:
                 super().__init__()
 
         class GoodParent(ParameterizedABC):
-            _type_enum = example_enum
+            type_enum = example_enum
 
             def __init__(self):
                 pass
@@ -37,7 +37,7 @@ class TestParameterizedABC:
                 super().__init__()
 
         class GoodChild(GoodParent):
-            _type = example_enum.ONE
+            type_ = example_enum.ONE
 
             def __init__(self):
                 super().__init__()
