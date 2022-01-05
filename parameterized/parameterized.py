@@ -290,8 +290,7 @@ def create_obj_from_params(cls: Type[T], params: dict) -> T:
     # create object
     result = cls(*args, **kwargs)
     # update with remaining params if any remain
-    if params:
-        result.update_from_params(params)
+    result.update_from_params(params)
     return result
 
 
