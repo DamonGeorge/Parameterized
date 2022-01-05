@@ -1,6 +1,6 @@
 from enum import Enum
 from pathlib import Path
-from typing import List, Tuple
+from typing import Any, List, Tuple, Type
 
 import numpy as np
 
@@ -11,10 +11,10 @@ from parameterized.parameterized import Parameterized
 # =========================================================
 
 
-def register_serializers(enum_params: List[Tuple[str, Enum]] = [],
+def register_serializers(enum_params: List[Tuple[str, Type[Enum]]] = [],
                          numpy_params: List[str] = [],
                          path_params: List[str] = [],
-                         parameterized_params: List[Tuple[str, Parameterized]] = []):
+                         parameterized_params: List[Tuple[str, Type[Parameterized]]] = []):
     """
     This is a class decorator.
 
@@ -64,7 +64,7 @@ def register_serializers(enum_params: List[Tuple[str, Enum]] = [],
     return wrapper
 
 
-def param_serializer(*params: List[str]):
+def param_serializer(*params: str):
     """
     A decorator for static class methods (i.e. methods without a self parameter).
     This registers the given method as a serializer for the attributes given
@@ -80,7 +80,7 @@ def param_serializer(*params: List[str]):
     return wrapper
 
 
-def param_deserializer(*params: List[str]):
+def param_deserializer(*params: str):
     """
     A decorator for static class methods (i.e. methods without a self parameter).
     This registers the given method as a deserializer for the attributes given
@@ -96,7 +96,7 @@ def param_deserializer(*params: List[str]):
     return wrapper
 
 
-def type_serializer(*types: List):
+def type_serializer(*types: Type[Any]):
     """
     A decorator for static class methods (i.e. methods without a self parameter).
     This registers the given method as a serializer for the types given
@@ -112,7 +112,7 @@ def type_serializer(*types: List):
     return wrapper
 
 
-def type_deserializer(*types: List):
+def type_deserializer(*types: Type[Any]):
     """
     A decorator for static class methods (i.e. methods without a self parameter).
     This registers the given method as a deserializer for the types given
