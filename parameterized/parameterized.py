@@ -10,12 +10,13 @@ import json
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Type, TypeVar
+from typing import (Any, Callable, Dict, List, Mapping, Optional, Set, Tuple, Type,
+                    TypeVar)
 
 import numpy as np
 
 # helpful type variable
-T = TypeVar("T")
+T = TypeVar("T", bound="Parameterized")
 
 
 # =========================================================
@@ -45,28 +46,29 @@ class Parameterized(object):
     # Attribute names that should be ignored
     excluded_params = set()
 
-    def update_from_params(self, params: Mapping[str, Any]):
-        """
-        Update this object's attributes using the params dict.
-        Any attributes in the excluded_params list will not be updated,
-        and the param_serializers dict will be used to apply any necessary serializers.
-        """
-        # deserialize the params into self
-        deserialize_params(params, self,
-                           self.excluded_params, self._param_deserializers, self._type_deserializers)
-
     def get_params(self) -> Dict[str, Any]:
         """
         Returns dict of this object's attributes,
         excluding any attributes in the excluded_params list
         """
-        params = self.__dict__.copy()
-        # remove excluded params
-        for key in self.excluded_params:
-            params.pop(key, None)
-        # return the serialized params
-        serialize_params(params, self._param_serializers, self._type_serializers)
-        return params
+        return serialize_params(self.__dict__, self.excluded_params, self._param_serializers, self._type_serializers)
+
+    def update_from_params(self, params: Mapping[str, Any], use_deserializers=True):
+        """
+        Update this object's attributes using the params dict.
+        Any attributes in the excluded_params list will not be updated,
+        and the param_serializers dict will be used to apply any necessary serializers.
+        """
+        # deserialize
+        if use_deserializers:
+            params = deserialize_params(params, self.excluded_params,
+                                        self._param_deserializers, self._type_deserializers)
+        # update self
+        for attr in self.__dict__:
+            try:
+                self.__dict__[attr] = params[attr]
+            except KeyError:
+                pass
 
     @classmethod
     def from_params(cls: Type[T], params: Mapping[str, Any]) -> T:
@@ -76,6 +78,10 @@ class Parameterized(object):
         Factory method for creating an object of this class using the params dict
         and this classes' update_from_params() method.
         """
+        # deserialize
+        params = deserialize_params(params, cls.excluded_params,
+                                    cls._param_deserializers, cls._type_deserializers)
+        # create object
         return create_obj_from_params(cls, params)
 
     # from Printable
@@ -131,12 +137,16 @@ class ParameterizedABC(Parameterized, ABC):
 
         Create an instance of the given class given the params, which should contain the instance's "type"
         """
+        # check for type_enum
         if not hasattr(cls, "type_enum"):
             raise Exception("type_enum attribute does not exist on the given class!")
 
-        t = params["type"]  # the enum type
+        # deserialize params
+        params = deserialize_params(params, cls.excluded_params,
+                                    cls._param_deserializers, cls._type_deserializers)
 
-        # in case we only have the name of the enum
+        # get the enum type which wasn't deserialized
+        t = params.pop("type")
         if not isinstance(t, Enum):
             t = cls.type_enum[t]
 
@@ -192,64 +202,63 @@ class ParameterizedABC(Parameterized, ABC):
 # =========================================================
 # Helpful Utilities
 # =========================================================
-def deserialize_params(params: Mapping[str, Any], output_obj: Optional[object] = None,
+def deserialize_params(params: Mapping[str, Any],
                        excluded_params: Set[str] = set(),
                        param_deserializers: Mapping[str, Callable] = {},
-                       type_deserializers: List[str, Callable] = []) -> None:
+                       type_deserializers: List[Tuple[Any, Callable]] = []) -> Dict[str, Any]:
     """
     Attributes whose names are listed in excluded_params
     will be excluded from the update.
     """
-    def serialize(key):
-        value = params[key]  # get the value of the param
+    # shallow copy params dict without excluded params
+    result = {k: v for k, v in params.items() if k not in excluded_params}
+
+    for attr in result:
+        value = result[attr]  # get the value of the param
 
         # if param has its own serializer, use it
-        if key in param_deserializers:
-            return param_deserializers[key](value)
-        # use the remaining type handlers
+        if attr in param_deserializers:
+            result[attr] = param_deserializers[attr](value)
+        # else use a type handler if possible
         else:
             for type_, deserializer in type_deserializers:
                 if isinstance(value, type_):
-                    return deserializer(value)
-        return value
+                    result[attr] = deserializer(value)
+                    break
 
-    if output_obj is not None:
-        # if we have an object, only update attributes on the object
-        for attr in output_obj.__dict__:
-            if attr in params and attr not in excluded_params:
-                output_obj.__dict__[attr] = serialize(attr)
-
-    else:
-        # else just update the provided dict
-        for attr in params:
-            if attr not in excluded_params:
-                params[attr] = serialize(attr)
+    return result
 
 
 def serialize_params(params: Mapping[str, Any],
+                     excluded_params: Set[str] = set(),
                      param_serializers: Mapping[str, Callable] = {},
-                     type_serializers: List[str, Callable] = []):
-    for key in params:
-        value = params[key]  # get the value of the param
+                     type_serializers: List[Tuple[Any, Callable]] = []) -> Dict[str, Any]:
+    # shallow copy params dict without excluded params
+    result = {k: v for k, v in params.items() if k not in excluded_params}
+
+    for attr in result:
+        value = result[attr]  # get the value of the param
 
         # if param has its own serializer, use it
-        if key in param_serializers:
-            params[key] = param_serializers[key](value)
+        if attr in param_serializers:
+            result[attr] = param_serializers[attr](value)
         # built-in serializers for Parameretized objects, numpy arrays, enums and Paths
         elif isinstance(value, Parameterized):
-            params[key] = value.get_params()
+            result[attr] = value.get_params()
         elif isinstance(value, np.ndarray):
-            params[key] = value.tolist()
+            result[attr] = value.tolist()
         elif isinstance(value, Enum):
-            params[key] = value.name
+            result[attr] = value.name
         elif isinstance(value, Path):
-            params[key] = str(value)
+            result[attr] = str(value)
         # use the remaining type handlers
         else:
             for type_, serializer in type_serializers:
                 if isinstance(value, type_):
-                    params[key] = serializer(value)
+                    result[attr] = serializer(value)
                     break
+
+    return result
 
 
 def create_obj_from_params(cls: Type[T], params: dict) -> T:
@@ -290,7 +299,7 @@ def create_obj_from_params(cls: Type[T], params: dict) -> T:
     # create object
     result = cls(*args, **kwargs)
     # update with remaining params if any remain
-    result.update_from_params(params)
+    result.update_from_params(params, use_deserializers=False)
     return result
 
 
