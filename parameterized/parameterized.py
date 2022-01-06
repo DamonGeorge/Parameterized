@@ -127,7 +127,7 @@ class ParameterizedABC(Parameterized, ABC):
     def get_params(self) -> Dict[str, Any]:
         """ Adds the type to the params"""
         params = super().get_params()
-        params.update({"type": self.type_})
+        params.update({"type": self.type_.name})
         return params
 
     @classmethod
